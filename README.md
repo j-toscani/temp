@@ -26,6 +26,14 @@ $ temp add mjml src/my-mail.mjml
 ```
 
 Adds a template saved under `mjml` based on the file located at `src/my-mail.mjml`.
+### Removing templates
+```
+$ temp remove <template-key> <path-to-template>
+
+$ temp remove mjml
+```
+
+Removes the template saved under `mjml`.
 
 ## Progress
 - [ ] Use Main function to examplify usage
@@ -40,5 +48,12 @@ Create files based on saved templates
 - [ ] Read file to extract the correct template
 - [ ] Create a file at the appropriate location based on the chosen template
 
-Add Templates to file
+Add/Remove Templates to/from file
 - [ ] Create an entry in the file with `fileEnding` and `template` saved under the provided `template-key`.
+
+
+## Additions
+- Add remote templates
+- Make it possible to create multiple templates for one `template-key` with one default template.
+- Add more template options e.g. `defaultName`
+- Add filetrees to enable templates for projects instead of just files
