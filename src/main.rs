@@ -3,7 +3,7 @@ use std::path;
 
 fn main() {
     let action = "create";
-    let outpath = "/";
+    let outpath = "";
     let filename = "hello.txt";
     let content = "Hello World!";
 
