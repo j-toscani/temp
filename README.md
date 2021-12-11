@@ -26,3 +26,19 @@ $ temp add mjml src/my-mail.mjml
 ```
 
 Adds a template saved under `mjml` based on the file located at `src/my-mail.mjml`.
+
+## Progress
+- [ ] Use Main function to examplify usage
+
+Modularize functionality
+- [ ] Have one config object that defines actions and variables
+- [ ] Create one function to call in order to run the program
+- [ ] Keep one file that keeps track of all existing templates
+
+Create files based on saved templates
+- [ ] Parse the commandline arguments
+- [ ] Read file to extract the correct template
+- [ ] Create a file at the appropriate location based on the chosen template
+
+Add Templates to file
+- [ ] Create an entry in the file with `fileEnding` and `template` saved under the provided `template-key`.
