@@ -41,11 +41,11 @@ Removes the template saved under `mjml`.
 Modularize functionality
 - [x] Have one config object that defines actions and variables
 - [x] Create one function to call in order to run the program
-- [ ] Keep one file that keeps track of all existing templates
+- [x] Keep one file that keeps track of all existing templates
 
 Create files based on saved templates
-- [ ] Parse the commandline arguments
-- [ ] Read file to extract the correct template
+- [x] Parse the commandline arguments
+- [x] Read file to extract the correct template
 - [ ] Create a file at the appropriate location based on the chosen template
 
 Add/Remove Templates to/from file
