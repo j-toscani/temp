@@ -49,15 +49,6 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let parent = match config.outpath.parent() {
-        Some(path) => path,
-        None => Path::new("/")
-    };
-
-    if !parent.exists() {
-        create_dir_all(parent)?;
-    }
-
     match config.action {
         // Action::ADD => ,
         Action::CREATE => create_file_from_template(config)
@@ -76,6 +67,14 @@ fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
         }
     };
 
+    let parent = match config.outpath.parent() {
+        Some(path) => path,
+        None => Path::new("/")
+    };
+
+    if !parent.exists() {
+        create_dir_all(parent)?;
+    }
 
     write(config.outpath, template)?;
     Ok(())
@@ -99,24 +98,21 @@ fn get_template_from_file(file: File, template_key: &String) -> Option<String> {
 
     for (_index, line) in reader.lines().enumerate() {
         let line: String = line.unwrap();
-        let line_hase_template = line.starts_with(template_key);
 
-        if line_hase_template {
-            let template_start = match line.find(" ") {
-                Some(pos) => pos + " ".len(),
-                None => 0
-            };
-        
-            result = match line.get(template_start..) {
-                Some(string) => Some(String::from(string)),
-                None => None
-            };
-
+        if line.starts_with(template_key) {
+            result = Some(line);
             break;
         }
     }
 
-    result
+    if result.is_some() {
+        let line_with_template = result.unwrap();
+        let template_start = line_with_template.find(" ").expect("Template not saved correctly.");
+        let template = line_with_template.get(template_start..).unwrap().trim();
+        result = Some(String::from(template));
+    }
+
+    return result
 }
 
 #[cfg(test)]
