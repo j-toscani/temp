@@ -2,13 +2,13 @@ use std::path::{PathBuf, Path};
 use std::error::Error;
 use std::env::current_exe;
 use std::io::{BufRead, BufReader};
-use std::io::Write;
-use std::fs::{create_dir_all, File, OpenOptions};
+// use std::io::Write;
+use std::fs::{create_dir_all, File, write};
 
 #[derive(Debug)]
 enum Action {
     CREATE,
-    ADD,
+    // ADD,
 }
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl Config {
 
         let action = match args[1].as_str().trim() {
             "create" => Action::CREATE,
-            "add" => Action::ADD,
+            // "add" => Action::ADD,
             _ => return Err("This action does not exist"),
         };
 
@@ -39,10 +39,9 @@ impl Config {
                 true => args[4].as_str(),
                 false => "New.txt",
             };
-            
+
             path.push(filename);
         }
-
 
         Ok(Config {
             action,
@@ -54,37 +53,13 @@ impl Config {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     match config.action {
-        Action::ADD => add_template(config),
+        // Action::ADD => add_template(config),
         Action::CREATE => create_file_from_template(config)
     }
 }
 
-fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
-    let mut template_file = get_template_file("templates.txt",true)?;
-
-    let template_exists = match find_template_entry(&template_file, &config.template_key) {
-        Some(_line) => true,
-        None => false
-    };
-
-    if template_exists {
-        println!("Template already created. To replace it, you have to remove it first.");
-        return Ok(())
-    };
-
-    if !config.path.is_file() {
-        println!("The provided path is not pointing to a file.");
-        return Ok(())
-    }
-
-    let content = std::fs::read_to_string(config.path)?;
-    println!("{}", content);
-    write!(template_file, "{} {}", config.template_key, content).unwrap();
-    Ok(())
-}
-
 fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
-    let file = get_template_file("templates.txt", false)?;
+    let file = get_template_file("templates.txt")?;
 
     let template = match find_template_entry(&file, &config.template_key) {
         Some(line) => get_template_from_line(&line),
@@ -103,15 +78,20 @@ fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
         create_dir_all(parent)?;
     }
 
-    std::fs::write(config.path, template)?;
+    write(config.path, template)?;
     Ok(())
 }
 
-fn get_template_file(filename: &str, append: bool) -> Result<File, std::io::Error>{
+fn get_template_file(filename: &str) -> Result<File, std::io::Error>{
     let mut template_file_path: PathBuf = current_exe()?; 
     template_file_path.set_file_name(filename);
 
-    OpenOptions::new().append(append).create(true).write(true).open(template_file_path)
+    if template_file_path.exists() {
+        File::open(&template_file_path)
+    } else {
+        File::create(&template_file_path)?;
+        File::open(&template_file_path)
+    }
 }
 
 fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
@@ -119,6 +99,7 @@ fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
     let mut result : Option<String> = None;
 
     for (_index, line) in reader.lines().enumerate() {
+
         let line: String = match line {
             Ok(line) => line,
             Err(_) => return None
@@ -126,7 +107,6 @@ fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
 
         if line.starts_with(template_key) {
             result = Some(line);
-            break;
         }
     }
 

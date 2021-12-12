@@ -46,7 +46,7 @@ Modularize functionality
 Create files based on saved templates
 - [x] Parse the commandline arguments
 - [x] Read file to extract the correct template
-- [ ] Create a file at the appropriate location based on the chosen template
+- [x] Create a file at the appropriate location based on the chosen template
 
 Add/Remove Templates to/from file
 - [ ] Create an entry in the file with `fileEnding` and `template` saved under the provided `template-key`.
