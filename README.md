@@ -36,11 +36,11 @@ $ temp remove mjml
 Removes the template saved under `mjml`.
 
 ## Progress
-- [ ] Use Main function to examplify usage
+- [x] Use Main function to examplify usage
 
 Modularize functionality
-- [ ] Have one config object that defines actions and variables
-- [ ] Create one function to call in order to run the program
+- [x] Have one config object that defines actions and variables
+- [x] Create one function to call in order to run the program
 - [ ] Keep one file that keeps track of all existing templates
 
 Create files based on saved templates
