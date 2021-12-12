@@ -48,6 +48,11 @@ Create files based on saved templates
 - [x] Read file to extract the correct template
 - [x] Create a file at the appropriate location based on the chosen template
 
+Add tests to keep current functionality
+
+Change way to store templates
+- [ ] use a `.json` file so that templates can be saved with linebreaks
+
 Add/Remove Templates to/from file
 - [ ] Create an entry in the file with `fileEnding` and `template` saved under the provided `template-key`.
 
