@@ -2,19 +2,19 @@ use std::path::{PathBuf, Path};
 use std::error::Error;
 use std::env::current_exe;
 use std::io::{BufRead, BufReader};
-use std::fs::{create_dir_all, write, File, remove_file};
+use std::fs::{create_dir_all, write, File, OpenOptions};
 
 #[derive(Debug)]
 enum Action {
     CREATE,
-    // ADD,
+    ADD,
 }
 
 #[derive(Debug)]
 pub struct Config {
     action: Action,
     template_key: String,
-    outpath: PathBuf,
+    path: PathBuf,
 }
 
 impl Config {
@@ -25,49 +25,70 @@ impl Config {
 
         let action = match args[1].as_str().trim() {
             "create" => Action::CREATE,
-            // "add" => Action::ADD,
-            _ => return Err("This this action does not exist"),
+            "add" => Action::ADD,
+            _ => return Err("This action does not exist"),
         };
 
         let template_key = String::from(&args[2]);
 
-        let mut outpath = PathBuf::from(args[3].as_str());
+        let mut path = PathBuf::from(args[3].as_str());
 
         let filename = match args.len() >= 5 {
             true => args[4].as_str(),
             false => "New.txt",
         };
 
-        outpath.push(filename);
+        path.push(filename);
 
         Ok(Config {
             action,
             template_key,
-            outpath,
+            path,
         })
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     match config.action {
-        // Action::ADD => ,
+        Action::ADD => add_template(config),
         Action::CREATE => create_file_from_template(config)
     }
 }
 
-fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
-    let template_file_name = "templates.txt";
-    let file = get_template_file(template_file_name)?;
+fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
+    let template_file = get_template_file("templates.txt",true)?;
 
-    let template = match get_template_from_file(file, &config.template_key) {
-        Some(line) => line,
+    let template_exists = match find_template_entry(template_file, &config.template_key) {
+        Some(line) => true,
+        None => false
+    };
+
+    if template_exists {
+        println!("Template already created. To replace it, you have to remove it first.");
+        return Ok(())
+    };
+
+    if !config.path.is_file() {
+        println!("The provided path is not pointing to a file.");
+        return Ok(())
+    }
+
+    let content = std::fs::read_to_string(config.path)?;
+    write!(template_file, "{} {}", config.template_key, content)
+}
+
+fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
+    let file = get_template_file("templates.txt", false)?;
+
+    let template = match find_template_entry(file, &config.template_key) {
+        Some(line) => get_template_from_line(&line),
         None => {
             println!("Requested template does not exist.");
             return Ok(())
         }
     };
 
-    let parent = match config.outpath.parent() {
+    let parent = match config.path.parent() {
         Some(path) => path,
         None => Path::new("/")
     };
@@ -76,23 +97,18 @@ fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
         create_dir_all(parent)?;
     }
 
-    write(config.outpath, template)?;
+    write(config.path, template)?;
     Ok(())
 }
 
-fn get_template_file(filename: &str) -> Result<File, std::io::Error>{
+fn get_template_file(filename: &str, append: bool) -> Result<File, std::io::Error>{
     let mut template_file_path: PathBuf = current_exe()?; 
     template_file_path.set_file_name(filename);
 
-    if template_file_path.exists() {
-        File::open(&template_file_path)
-    } else {
-        File::create(&template_file_path)?;
-        File::open(template_file_path)
-    }
+    OpenOptions::new().append(append).create(true).write(true).open(template_file_path)
 }
 
-fn get_template_from_file(file: File, template_key: &String) -> Option<String> {
+fn find_template_entry(file: File, template_key: &String) -> Option<String> {
     let reader = BufReader::new(file);
     let mut result : Option<String> = None;
 
@@ -105,14 +121,13 @@ fn get_template_from_file(file: File, template_key: &String) -> Option<String> {
         }
     }
 
-    if result.is_some() {
-        let line_with_template = result.unwrap();
-        let template_start = line_with_template.find(" ").expect("Template not saved correctly.");
-        let template = line_with_template.get(template_start..).unwrap().trim();
-        result = Some(String::from(template));
-    }
+    result
+}
 
-    return result
+fn get_template_from_line(line: &String) -> String {
+    let template_start = line.find(" ").expect("Template not saved correctly.");
+    let template = line.get(template_start..).unwrap().trim();
+    String::from(template)
 }
 
 #[cfg(test)]
@@ -133,45 +148,7 @@ fn get_template_from_file(file: File, template_key: &String) -> Option<String> {
         template_file_path.set_file_name(filename);
 
         if template_file_path.exists() {
-            remove_file(&template_file_path).unwrap();
+            std::fs::remove_file(&template_file_path).unwrap();
         }
-    }
-
-    #[test]
-    fn open_file() {
-        let filename = "template-test.txt";
-        create_test_file(&filename);
-        let file = get_template_file(&filename);
-
-        assert_eq!(file.is_ok(), true);
-    }
-    #[test]
-    fn create_if_nonexistent_and_open() {
-        let filename = "template-test.txt";
-        remove_test_file(&filename);
-
-        let file = get_template_file(&filename);
-
-        assert_eq!(file.is_ok(), true)
-    }
-    #[test]
-    fn key_does_not_exist() {
-        let filename = "template-test.txt";
-        let test_file = create_test_file(&filename);
-
-        let template_key = String::from("vue");
-
-        let template = get_template_from_file(test_file, &template_key);
-        assert_eq!(None, template);
-    }
-    #[test]
-    fn key_does_exist() {
-        let filename = "template-test.txt";
-        let test_file = create_test_file(&filename);
-
-        let template_key = String::from("txt");
-
-        let template = get_template_from_file(test_file, &template_key);
-        assert_eq!(Some(String::from("Hello World!")), template);
     }
 }
