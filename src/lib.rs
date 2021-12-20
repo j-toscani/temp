@@ -69,10 +69,7 @@ fn create_file_from_template(config: Config) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let parent = match config.path.parent() {
-        Some(path) => path,
-        None => Path::new("/"),
-    };
+    let parent = config.path.parent().unwrap_or(Path::new("/"));
 
     if !parent.exists() {
         create_dir_all(parent)?;
@@ -133,6 +130,6 @@ fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
 
 fn get_template_from_line(line: &String) -> String {
     let template_start = line.find(" ").expect("Template not saved correctly.");
-    let template = line.get(template_start..).unwrap().trim();
+    let template = line.get(template_start..).unwrap_or("").trim();
     String::from(template)
 }
