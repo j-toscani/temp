@@ -83,12 +83,9 @@ fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
     let filename = "templates.txt";
     let mut file = get_template_file(&filename)?;
 
-    let has_entry = match find_template_entry(&file, &config.template_key) {
-        Some(_entry) => true,
-        None => false,
-    };
+    let has_entry = find_template_entry(&file, &config.template_key);
 
-    if has_entry {
+    if has_entry.is_some() {
         println!("Entry '{}' exists already.", &config.template_key);
         return Ok(());
     }
