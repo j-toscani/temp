@@ -84,21 +84,20 @@ fn create_file_from_template(config: Config) -> Result<(), Box<dyn Error>> {
 
 fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
     let filename = "templates.txt";
-    let file = get_template_file(&filename)?;
+    let mut file = get_template_file(&filename)?;
 
     let has_entry = match find_template_entry(&file, &config.template_key) {
         Some(_entry) => true,
         None => false,
     };
+
     if has_entry {
         println!("Entry '{}' exists already.", &config.template_key);
         return Ok(());
     }
 
-    let mut file = get_file_to_append_to(filename)?;
     let template = std::fs::read_to_string(&config.path)?;
-    writeln!(file, "{} {}", &config.template_key, template);
-
+    writeln!(file, "{} {}", &config.template_key, template)?;
     Ok(())
 }
 
@@ -106,22 +105,12 @@ fn get_template_file(filename: &str) -> Result<File, std::io::Error> {
     let mut template_file_path: PathBuf = current_exe()?;
     template_file_path.set_file_name(filename);
 
-    if template_file_path.exists() {
-        File::open(&template_file_path)
-    } else {
-        File::create(&template_file_path)?;
-        File::open(&template_file_path)
-    }
-}
-
-fn get_file_to_append_to(filename: &str) -> std::result::Result<std::fs::File, std::io::Error> {
-    let mut template_file_path: PathBuf = current_exe()?;
-    template_file_path.set_file_name(filename);
-
-    let file = std::fs::OpenOptions::new()
+    std::fs::OpenOptions::new()
         .append(true)
-        .open(template_file_path);
-    file
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(template_file_path)
 }
 
 fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
@@ -146,27 +135,4 @@ fn get_template_from_line(line: &String) -> String {
     let template_start = line.find(" ").expect("Template not saved correctly.");
     let template = line.get(template_start..).unwrap().trim();
     String::from(template)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn create_test_file(filename: &str) -> File {
-        let content = "txt Hello World!\n";
-        let mut template_file_path: PathBuf = current_exe().unwrap();
-        template_file_path.set_file_name(&filename);
-
-        std::fs::write(&template_file_path, content).unwrap();
-        File::open(template_file_path).unwrap()
-    }
-
-    fn remove_test_file(filename: &str) {
-        let mut template_file_path: PathBuf = current_exe().unwrap();
-        template_file_path.set_file_name(filename);
-
-        if template_file_path.exists() {
-            std::fs::remove_file(&template_file_path).unwrap();
-        }
-    }
 }
