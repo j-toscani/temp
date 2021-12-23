@@ -1,9 +1,9 @@
-use std::env::current_exe;
-use std::error::Error;
-use std::fs::{create_dir_all, write, File};
-use std::io::Write;
-use std::io::{BufRead, BufReader};
+use std::fs::{create_dir_all, write};
 use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::error::Error;
+
+mod store;
 
 #[derive(Debug)]
 enum Action {
@@ -59,10 +59,11 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 fn create_file_from_template(config: Config) -> Result<(), Box<dyn Error>> {
-    let file = get_template_file("templates.txt")?;
+    let path = store::get_path_to_store("templates.txt")?;
+    let file = store::get_store_file(path)?;
 
-    let template = match find_template_entry(&file, &config.template_key) {
-        Some(line) => get_template_from_line(&line),
+    let template = match store::get_store_entry(&file, &config.template_key) {
+        Some(line) => store::get_store_entry_value(&line),
         None => {
             println!("Requested template does not exist.");
             return Ok(());
@@ -80,10 +81,10 @@ fn create_file_from_template(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
-    let filename = "templates.txt";
-    let mut file = get_template_file(&filename)?;
+    let path = store::get_path_to_store("templates.txt")?;
+    let mut file = store::get_store_file(path)?;
 
-    let has_entry = find_template_entry(&file, &config.template_key);
+    let has_entry = store::get_store_entry(&file, &config.template_key);
 
     if has_entry.is_some() {
         println!("Entry '{}' exists already.", &config.template_key);
@@ -95,38 +96,3 @@ fn add_template(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn get_template_file(filename: &str) -> Result<File, std::io::Error> {
-    let mut template_file_path: PathBuf = current_exe()?;
-    template_file_path.set_file_name(filename);
-
-    std::fs::OpenOptions::new()
-        .append(true)
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(template_file_path)
-}
-
-fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
-    let reader = BufReader::new(file);
-    let mut result: Option<String> = None;
-
-    for (_index, line) in reader.lines().enumerate() {
-        let line: String = match line {
-            Ok(line) => line,
-            Err(_) => return None,
-        };
-
-        if line.starts_with(template_key) {
-            result = Some(line);
-        }
-    }
-
-    result
-}
-
-fn get_template_from_line(line: &String) -> String {
-    let template_start = line.find(" ").expect("Template not saved correctly.");
-    let template = line.get(template_start..).unwrap_or("").trim();
-    String::from(template)
-}
