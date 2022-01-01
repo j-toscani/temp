@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{PathBuf, Path};
 use std::error::Error;
 use std::env::current_exe;
@@ -9,6 +10,27 @@ use std::fs::{create_dir_all, File, write};
 enum Action {
     CREATE,
     // ADD,
+}
+
+struct TemplateLine {
+    exists: bool,
+    key: String,
+    template: String
+}
+
+impl TemplateLine {
+    fn new(line: String) -> TemplateLine{
+        let (key, template, exists) = match line.split_once(" ") {
+            Some((key, template)) => (key, template, true),
+            None => ("", "", false)
+        };
+
+        TemplateLine {
+            key: String::from(key), 
+            template: String::from(template),
+            exists
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -37,10 +59,11 @@ impl Config {
         if !path.is_file() {
             let filename = match args.len() >= 5 {
                 true => args[4].as_str(),
-                false => "New.txt",
+                false => "New",
             };
 
-            path.push(filename);
+            path.set_file_name(&filename);
+            path.set_extension(&template_key);
         }
 
         Ok(Config {
@@ -59,15 +82,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
-    let file = get_template_file("templates.txt")?;
-
-    let template = match find_template_entry(&file, &config.template_key) {
-        Some(line) => get_template_from_line(&line),
-        None => {
-            println!("Requested template does not exist.");
-            return Ok(())
-        }
-    };
+    let template_store = get_template_store()?;
+    let template = template_store.get(&config.template_key).unwrap();
 
     let parent = match config.path.parent() {
         Some(path) => path,
@@ -82,9 +98,15 @@ fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
     Ok(())
 }
 
-fn get_template_file(filename: &str) -> Result<File, std::io::Error>{
+fn get_template_store() -> Result<HashMap<String, String>, Box<dyn Error>>{
+    let file = get_template_file()?;
+    let template_lines = collect_template_lines(&file);
+    Ok(create_template_store(template_lines))
+}
+
+fn get_template_file() -> Result<File, std::io::Error>{
     let mut template_file_path: PathBuf = current_exe()?; 
-    template_file_path.set_file_name(filename);
+    template_file_path.set_file_name("templates.txt");
 
     if template_file_path.exists() {
         File::open(&template_file_path)
@@ -94,30 +116,27 @@ fn get_template_file(filename: &str) -> Result<File, std::io::Error>{
     }
 }
 
-fn find_template_entry(file: &File, template_key: &String) -> Option<String> {
+fn collect_template_lines(file: &File) -> Vec<TemplateLine> {
     let reader = BufReader::new(file);
-    let mut result : Option<String> = None;
 
-    for (_index, line) in reader.lines().enumerate() {
+    let valid_lines: Vec<TemplateLine> = reader.lines()
+    .map(|line|line.ok())
+    .map(|line| TemplateLine::new(line.unwrap_or(String::from("--"))))
+    .collect();
+    valid_lines
+}
 
-        let line: String = match line {
-            Ok(line) => line,
-            Err(_) => return None
-        };
+fn create_template_store(lines: Vec<TemplateLine>) -> HashMap<String, String> {
+    let mut store: HashMap<String, String> = HashMap::new();
+    let filtered_templates = lines.iter().filter(|template| template.exists);
 
-        if line.starts_with(template_key) {
-            result = Some(line);
-        }
+    for template in filtered_templates {
+        store.insert(template.key.clone(), template.template.clone());
     }
-
-    result
+    store
 }
 
-fn get_template_from_line(line: &String) -> String {
-    let template_start = line.find(" ").expect("Template not saved correctly.");
-    let template = line.get(template_start..).unwrap().trim();
-    String::from(template)
-}
+
 
 #[cfg(test)]
     mod tests {
