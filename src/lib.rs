@@ -4,12 +4,13 @@ use std::path::{PathBuf, Path};
 use std::error::Error;
 use std::env::current_exe;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::fs::{create_dir_all, File, write, OpenOptions};
+use std::fs::{create_dir_all, File, write, copy, remove_file, OpenOptions};
 
 #[derive(Debug)]
 enum Action {
     CREATE,
     ADD,
+    REMOVE
 }
 
 struct TemplateLine {
@@ -46,9 +47,10 @@ impl Config {
             return Err("Please provide an action, a template_key and an outputpath.");
         }
 
-        let action = match args[1].as_str().trim() {
+        let action = match args[1].to_lowercase().as_str().trim() {
             "create" => Action::CREATE,
             "add" => Action::ADD,
+            "remove" => Action::REMOVE,
             _ => return Err("This action does not exist"),
         };
 
@@ -75,14 +77,18 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let template_store = get_template_store()?;
+    let mut template_file_path: PathBuf = current_exe()?; 
+    template_file_path.set_file_name("templates.txt");
+    let mut file = get_writable_file(&template_file_path)?;
+
+    let template_store = get_template_store(&file)?;
+
     match config.action {
         Action::ADD =>  {
             if template_store.contains_key(&config.template_key) {
                 panic!("Template already existing.");
             }
             
-            let mut file = get_template_file()?;
             let template = get_template_to_add(&config.path)?;
             writeln!(file, "{} {}", config.template_key, template)?;
             
@@ -97,6 +103,25 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         
             write(config.path, template)?;
         }
+        Action::REMOVE => {
+            if !template_store.contains_key(&config.template_key) {
+                println!("Key '{}' does not exist.", &config.template_key);
+                return Ok(())
+            }
+            let mut tmp_template_file_path = template_file_path.clone();
+            tmp_template_file_path.set_file_name("tmptemplate.txt");
+
+            let mut tmp_file = get_writable_file(&tmp_template_file_path)?;
+        
+            for key in template_store.keys() {
+                if key != &config.template_key {
+                    writeln!(tmp_file, "{} {}", key, template_store.get(key).unwrap())?;
+                }
+            }
+        
+            copy(&tmp_template_file_path, template_file_path)?;
+            remove_file(tmp_template_file_path)?;
+        }
     }
     Ok(())
 }
@@ -110,17 +135,13 @@ fn get_template_to_add(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     Ok(template_string)
 }
 
-fn get_template_store() -> Result<HashMap<String, String>, Box<dyn Error>>{
-    let file = get_template_file()?;
-    let template_lines = collect_template_lines(&file);
+fn get_template_store(file: &File) -> Result<HashMap<String, String>, Box<dyn Error>>{
+    let template_lines = collect_template_lines(file);
     Ok(create_template_store(template_lines))
 }
 
-fn get_template_file() -> Result<File, std::io::Error>{
-    let mut template_file_path: PathBuf = current_exe()?; 
-    template_file_path.set_file_name("templates.txt");
-
-    OpenOptions::new().append(true).create(true).read(true).open(template_file_path)
+fn get_writable_file(filepath: &PathBuf) -> Result<File, std::io::Error>{
+    OpenOptions::new().append(true).create(true).read(true).open(filepath)
 }
 
 fn collect_template_lines(file: &File) -> Vec<TemplateLine> {
