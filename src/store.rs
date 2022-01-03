@@ -17,33 +17,17 @@ struct TemplateStore {
 
 impl TemplateStore {
     fn new(filename: &str) -> TemplateStore {
-        let file_and_path = get_template_file(filename).unwrap();
-        let template_store = get_template_store(&file_and_path.0).unwrap();
+        let (file, path) = get_template_file(filename).unwrap();
+
+        let reader = BufReader::new(&file);
+        let mut values: HashMap<String, String> = HashMap::new();
+        let valid_lines = validate_lines(reader);
+        lines_to_hashmap(valid_lines, &mut values);
 
         TemplateStore {
-            file: file_and_path.0,
-            path: file_and_path.1,
-            values: template_store
-        }
-    }
-}
-pub struct TemplateLine {
-    exists: bool,
-    key: String,
-    template: String
-}
-
-impl TemplateLine {
-    fn new(line: String) -> TemplateLine{
-        let (key, template, exists) = match line.split_once(" ") {
-            Some((key, template)) => (key, template, true),
-            None => ("", "", false)
-        };
-
-        TemplateLine {
-            key: String::from(key), 
-            template: String::from(template),
-            exists
+            file,
+            path,
+            values
         }
     }
 }
@@ -106,31 +90,23 @@ fn get_template_file(filename: &str) -> Result<(File, PathBuf), Box<dyn Error>>{
     Ok((file, template_file_path))
 }
 
-fn get_template_store(file: &File) -> Result<HashMap<String, String>, Box<dyn Error>>{
-    let template_lines = collect_template_lines(file);
-    Ok(create_template_store(template_lines))
-}
-
 fn get_writable_file(filepath: &PathBuf) -> Result<File, std::io::Error>{
     OpenOptions::new().append(true).create(true).read(true).open(filepath)
 }
 
-fn create_template_store(lines: Vec<TemplateLine>) -> HashMap<String, String> {
-    let mut store: HashMap<String, String> = HashMap::new();
-    let filtered_templates = lines.iter().filter(|template| template.exists);
-
-    for template in filtered_templates {
-        store.insert(template.key.clone(), template.template.clone());
-    }
-    store
+fn validate_lines(reader: BufReader<&File>) -> Vec<String> {
+    let valid_lines: Vec<String> = reader.lines()
+        .map(|line|line.ok())
+        .map(|line| line.unwrap()).collect();
+    valid_lines
 }
 
-fn collect_template_lines(file: &File) -> Vec<TemplateLine> {
-    let reader = BufReader::new(file);
-
-    let valid_lines: Vec<TemplateLine> = reader.lines()
-    .map(|line|line.ok())
-    .map(|line| TemplateLine::new(line.unwrap_or(String::from("--"))))
-    .collect();
-    valid_lines
+fn lines_to_hashmap(valid_lines: Vec<String>, store: &mut HashMap<String, String>) {
+    for line in valid_lines {
+        let split_line = line.split_once(" ");
+        if split_line.is_some() {
+            let (key, value) = split_line.unwrap();
+            store.insert(String::from(key), String::from(value));
+        }
+    };
 }
