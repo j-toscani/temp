@@ -29,21 +29,11 @@ impl Config {
 
         let template_key = String::from(&args[2]);
 
-        let mut path = match args.len() >= 4 {
+        let path = match args.len() >= 4 {
             true => PathBuf::from(args[3].as_str()),
-            false => PathBuf::from("")
+            false => PathBuf::from(format!("{}{}", "New", template_key))
         };
-
-        if !path.is_file() {
-            let filename = match args.len() >= 5 {
-                true => args[4].as_str(),
-                false => "New",
-            };
-
-            path.set_file_name(&filename);
-            path.set_extension(&template_key);
-        }
-
+        
         Ok(Config {
             action,
             template_key,
