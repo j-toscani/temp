@@ -43,7 +43,7 @@ pub struct Config {
 
 impl Config {
     pub fn new(args: &Vec<String>) -> Result<Config, &str> {
-        if args.len() < 4 {
+        if args.len() < 3 {
             return Err("Please provide an action, a template_key and an outputpath.");
         }
 
@@ -56,7 +56,10 @@ impl Config {
 
         let template_key = String::from(&args[2]);
 
-        let mut path = PathBuf::from(args[3].as_str());
+        let mut path = match args.len() >= 4 {
+            true => PathBuf::from(args[3].as_str()),
+            false => PathBuf::from("")
+        };
 
         if !path.is_file() {
             let filename = match args.len() >= 5 {
