@@ -1,15 +1,15 @@
+
 use std::collections::HashMap;
 use std::path::{PathBuf, Path};
 use std::error::Error;
 use std::env::current_exe;
-use std::io::{BufRead, BufReader};
-// use std::io::Write;
-use std::fs::{create_dir_all, File, write};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::fs::{create_dir_all, File, write, OpenOptions};
 
 #[derive(Debug)]
 enum Action {
     CREATE,
-    // ADD,
+    ADD,
 }
 
 struct TemplateLine {
@@ -48,7 +48,7 @@ impl Config {
 
         let action = match args[1].as_str().trim() {
             "create" => Action::CREATE,
-            // "add" => Action::ADD,
+            "add" => Action::ADD,
             _ => return Err("This action does not exist"),
         };
 
@@ -75,27 +75,39 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let template_store = get_template_store()?;
     match config.action {
-        // Action::ADD => add_template(config),
-        Action::CREATE => create_file_from_template(config)
+        Action::ADD =>  {
+            if template_store.contains_key(&config.template_key) {
+                panic!("Template already existing.");
+            }
+            
+            let mut file = get_template_file()?;
+            let template = get_template_to_add(&config.path)?;
+            writeln!(file, "{} {}", config.template_key, template)?;
+            
+        },
+        Action::CREATE => {
+            let template = template_store.get(&config.template_key).expect("Template not found");
+            let parent = config.path.parent().unwrap_or(Path::new("/"));
+        
+            if !parent.exists() {
+                create_dir_all(parent)?;
+            }
+        
+            write(config.path, template)?;
+        }
     }
+    Ok(())
 }
 
-fn create_file_from_template(config : Config) -> Result<(), Box<dyn Error>>{
-    let template_store = get_template_store()?;
-    let template = template_store.get(&config.template_key).unwrap();
 
-    let parent = match config.path.parent() {
-        Some(path) => path,
-        None => Path::new("/")
-    };
+fn get_template_to_add(path: &PathBuf) -> Result<String, Box<dyn Error>> {
+    let mut template = File::open(path)?;
+    let mut template_string = String::new();
+    template.read_to_string(&mut template_string)?;
 
-    if !parent.exists() {
-        create_dir_all(parent)?;
-    }
-
-    write(config.path, template)?;
-    Ok(())
+    Ok(template_string)
 }
 
 fn get_template_store() -> Result<HashMap<String, String>, Box<dyn Error>>{
@@ -108,12 +120,7 @@ fn get_template_file() -> Result<File, std::io::Error>{
     let mut template_file_path: PathBuf = current_exe()?; 
     template_file_path.set_file_name("templates.txt");
 
-    if template_file_path.exists() {
-        File::open(&template_file_path)
-    } else {
-        File::create(&template_file_path)?;
-        File::open(&template_file_path)
-    }
+    OpenOptions::new().append(true).create(true).read(true).open(template_file_path)
 }
 
 fn collect_template_lines(file: &File) -> Vec<TemplateLine> {
