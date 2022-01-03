@@ -44,13 +44,14 @@ pub fn add_to_store(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn remove_from_store(config: Config) -> Result<(), Box<dyn Error>> {
-    let store = TemplateStore::new("templates.txt");
+    let mut store = TemplateStore::new("templates.txt");
     let mut tmp_store = TemplateStore::new("tmp_templates.txt");
 
-    if !store.values.contains_key(&config.template_key) {
-        println!("Key '{}' does not exist.", &config.template_key);
-        return Ok(())
-    }
+
+    match store.values.remove_entry(&config.template_key) {
+        Some(entry) => println!("Removed '{}' from store.", entry.0),
+        None => println!("Template with key '{}' does not exist.", &config.template_key)
+    };
     
     for key in store.values.keys() {
         writeln!(tmp_store.file, "{} {}", key, store.values.get(key).unwrap())?;
@@ -71,7 +72,9 @@ pub fn create_from_store(config: Config) -> Result<(), Box<dyn Error>> {
         create_dir_all(parent)?;
     }
 
-    write(config.path, template)?;
+    let saveable_template = template.replace("<?>", "\n");
+
+    write(config.path, saveable_template)?;
     Ok(())
 }
 
@@ -79,8 +82,8 @@ fn get_template_to_add(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     let mut template = File::open(path)?;
     let mut template_string = String::new();
     template.read_to_string(&mut template_string)?;
-
-    Ok(template_string)
+    let saveable_template = template_string.replace("\n", "<?>");
+    Ok(saveable_template)
 }
 
 fn get_template_file(filename: &str) -> Result<(File, PathBuf), Box<dyn Error>>{
