@@ -135,28 +135,3 @@ fn create_template_store(lines: Vec<TemplateLine>) -> HashMap<String, String> {
     }
     store
 }
-
-
-
-#[cfg(test)]
-    mod tests {
-    use super::*;
-
-    fn create_test_file(filename: &str) -> File {
-        let content = "txt Hello World!\n";
-        let mut template_file_path: PathBuf = current_exe().unwrap();
-        template_file_path.set_file_name(&filename);
-
-        std::fs::write(&template_file_path, content).unwrap();
-        File::open(template_file_path).unwrap()
-    }
-
-    fn remove_test_file(filename: &str) {
-        let mut template_file_path: PathBuf = current_exe().unwrap();
-        template_file_path.set_file_name(filename);
-
-        if template_file_path.exists() {
-            std::fs::remove_file(&template_file_path).unwrap();
-        }
-    }
-}
