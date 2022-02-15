@@ -16,10 +16,6 @@ pub struct Config {
 
 impl Config {
     pub fn new(args: &Vec<String>) -> Result<Config, &str> {
-        if args.len() < 3 {
-            return Err("Please provide an action, a template_key and an outputpath.");
-        }
-
         let action = match args[1].to_lowercase().as_str().trim() {
             "list" => Action::LIST,
             "create" => Action::CREATE,
@@ -28,7 +24,19 @@ impl Config {
             _ => return Err("This action does not exist"),
         };
 
-        let template_key = String::from(&args[2]);
+        let min_args = match action {
+            Action::LIST => 2,
+            _ => 3,
+        };
+
+        if args.len() < min_args {
+            return Err("Please provide an action, a template_key and an outputpath.");
+        }
+
+        let template_key = match action {
+            Action::LIST => String::from(""),
+            _ => String::from(&args[2]),
+        };
 
         let path = match args.len() >= 4 {
             true => PathBuf::from(args[3].as_str()),
