@@ -1,12 +1,12 @@
-
-use std::path::{PathBuf};
 use std::error::Error;
+use std::path::PathBuf;
 mod store;
 
 enum Action {
     CREATE,
     ADD,
-    REMOVE
+    REMOVE,
+    LIST,
 }
 pub struct Config {
     action: Action,
@@ -21,6 +21,7 @@ impl Config {
         }
 
         let action = match args[1].to_lowercase().as_str().trim() {
+            "list" => Action::LIST,
             "create" => Action::CREATE,
             "add" => Action::ADD,
             "remove" => Action::REMOVE,
@@ -31,9 +32,8 @@ impl Config {
 
         let path = match args.len() >= 4 {
             true => PathBuf::from(args[3].as_str()),
-            false => PathBuf::from(format!("{}{}", "New", template_key))
+            false => PathBuf::from(format!("{}{}", "New", template_key)),
         };
-        
         Ok(Config {
             action,
             template_key,
@@ -44,8 +44,9 @@ impl Config {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     match config.action {
-        Action::ADD =>  store::add_to_store(config),
+        Action::LIST => Ok(store::list_from_store()),
+        Action::ADD => store::add_to_store(config),
         Action::CREATE => store::create_from_store(config),
-        Action::REMOVE => store::remove_from_store(config)
+        Action::REMOVE => store::remove_from_store(config),
     }
 }
