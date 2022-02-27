@@ -11,12 +11,12 @@ Commands prepended with a `?` are optional. All paths can either be absolute or 
 
 ### Using templates
 ```
-$ temp create <template-key> <outputpath> ?<filename>
+$ temp create <template-key> ?<outputpath>
 
-$ temp create vue src/components Slider.vue
+$ temp create vue src/components/Slider.vue
 ```
 
-Generates `Slider.vue` at `./src/components/` based on the template saved under the key `vue`. If you ommit the filename the file will be called `New.vue`.
+Generates `Slider.vue` at `./src/components/` based on the template saved under the key `vue`. If you ommit the `<outpath>` the file will be called `New.vue` and create in the current directory.
 
 ### Adding templates
 ```
@@ -48,17 +48,16 @@ Create files based on saved templates
 - [x] Read file to extract the correct template
 - [x] Create a file at the appropriate location based on the chosen template
 
+
+- [x] Change way to store templates
+- [x] Add/Remove Templates to/from file
+
 Add tests to keep current functionality
-
-Change way to store templates
-- [ ] use a `.json` file so that templates can be saved with linebreaks
-
-Add/Remove Templates to/from file
-- [ ] Create an entry in the file with `fileEnding` and `template` saved under the provided `template-key`.
-
 
 ## Additions
 - Add remote templates
+- Use a better suited format to store/access templates (e.g. `json, yml ...`)
+- Add more properties to templates like `fileEnding` or `variants`
 - Make it possible to create multiple templates for one `template-key` with one default template.
 - Add more template options e.g. `defaultName`
 - Add filetrees to enable templates for projects instead of just files
