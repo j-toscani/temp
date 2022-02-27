@@ -40,7 +40,7 @@ impl Config {
 
         let path = match args.len() >= 4 {
             true => PathBuf::from(args[3].as_str()),
-            false => PathBuf::from(format!("{}{}", "New", template_key)),
+            false => PathBuf::from(format!("{}.{}", "New", template_key)),
         };
         Ok(Config {
             action,
