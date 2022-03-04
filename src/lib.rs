@@ -51,10 +51,12 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let mut store = store::TemplateStore::new("templates.txt");
+
     match config.action {
-        Action::LIST => Ok(store::list_from_store()),
-        Action::ADD => store::add_to_store(config),
-        Action::CREATE => store::create_from_store(config),
-        Action::REMOVE => store::remove_from_store(config),
+        Action::LIST => Ok(store.list_from_store()),
+        Action::ADD => store.add_to_store(config),
+        Action::CREATE => store.create_from_store(config),
+        Action::REMOVE => store.remove_from_store(config),
     }
 }
