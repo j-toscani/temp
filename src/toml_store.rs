@@ -32,6 +32,12 @@ impl TemplateStore {
     }
 }
 
+impl TemplateStore {
+    pub fn add() {}
+    pub fn remove() {}
+    pub fn update() {}
+}
+
 fn get_file_path(temp_dir: &mut PathBuf) -> &mut PathBuf {
     temp_dir.push("templates.toml");
     temp_dir
