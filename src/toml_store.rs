@@ -42,13 +42,13 @@ impl TemplateStore {
             .open(self._file_path)
             .unwrap()
     }
-    pub fn add(&mut self, key: String, path: PathBuf) {
+    pub fn add_template(&mut self, key: String, path: PathBuf) {
         self.store.insert(key, Template { path });
     }
-    pub fn remove(&mut self, key: String) {
+    pub fn remove_template(&mut self, key: String) {
         self.store.remove(&key);
     }
-    pub fn update(&mut self, key: String, path: PathBuf) {
+    pub fn update_template(&mut self, key: String, path: PathBuf) {
         if self.store.contains_key(&key) {
             self.store
                 .entry(key)
