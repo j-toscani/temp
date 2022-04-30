@@ -1,7 +1,7 @@
 use dirs;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs::{create_dir_all, read_to_string, write};
+use std::fs::{create_dir_all, read_to_string, write, File, OpenOptions};
 use std::path::PathBuf;
 use toml;
 
@@ -17,24 +17,30 @@ impl Template {
 }
 
 pub struct TemplateStore {
+    _file_path: PathBuf,
     store: HashMap<String, Template>,
 }
 
 impl TemplateStore {
-    pub fn new() -> TemplateStore {
-        let mut dir: PathBuf = get_temp_dir();
-        let file_path = get_file_path(&mut dir);
-
-        println!("{:?}", file_path);
-
-        if !file_path.exists() {
-            write(&file_path, "").unwrap();
-        }
-
-        let content = read_to_string(file_path).unwrap();
+    pub fn new(&self) -> TemplateStore {
+        let temp_dir = get_temp_dir();
+        setup_template_file(&mut temp_dir);
+        let content: String = self.get_store_content();
         let store: HashMap<String, Template> = toml::from_str(&content).unwrap();
 
-        return TemplateStore { store };
+        return TemplateStore {
+            _file_path: temp_dir,
+            store,
+        };
+    }
+    fn get_store_content(&self) -> String {
+        read_to_string(self._file_path).unwrap()
+    }
+    fn write_to_store(&self) -> File {
+        OpenOptions::new()
+            .write(true)
+            .open(self._file_path)
+            .unwrap()
     }
     pub fn add(&mut self, key: String, path: PathBuf) {
         self.store.insert(key, Template { path });
@@ -53,8 +59,13 @@ impl TemplateStore {
     }
 }
 
-fn get_file_path(temp_dir: &mut PathBuf) -> &mut PathBuf {
+fn setup_template_file(temp_dir: &mut PathBuf) -> &PathBuf {
     temp_dir.push("templates.toml");
+
+    if !temp_dir.exists() {
+        write(&temp_dir, "").unwrap();
+    }
+
     temp_dir
 }
 
