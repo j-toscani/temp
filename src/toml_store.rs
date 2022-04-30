@@ -5,9 +5,15 @@ use std::fs::{create_dir_all, read_to_string, write};
 use std::path::PathBuf;
 use toml;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Template {
     path: PathBuf,
+}
+
+impl Template {
+    pub fn set(&mut self, path: PathBuf) {
+        self.path = path;
+    }
 }
 
 pub struct TemplateStore {
@@ -30,12 +36,21 @@ impl TemplateStore {
 
         return TemplateStore { store };
     }
-}
-
-impl TemplateStore {
-    pub fn add() {}
-    pub fn remove() {}
-    pub fn update() {}
+    pub fn add(&mut self, key: String, path: PathBuf) {
+        self.store.insert(key, Template { path });
+    }
+    pub fn remove(&mut self, key: String) {
+        self.store.remove(&key);
+    }
+    pub fn update(&mut self, key: String, path: PathBuf) {
+        if self.store.contains_key(&key) {
+            self.store
+                .entry(key)
+                .and_modify(|template| template.set(path));
+        } else {
+            println!("Entry with key {} does not exist", key)
+        }
+    }
 }
 
 fn get_file_path(temp_dir: &mut PathBuf) -> &mut PathBuf {
