@@ -1,11 +1,11 @@
 use dirs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::{create_dir_all, read_to_string, write, File, OpenOptions};
+use std::fs::{create_dir_all, read_to_string, write};
 use std::path::PathBuf;
 use toml;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Template {
     path: PathBuf,
 }
@@ -18,29 +18,15 @@ impl Template {
 
 pub struct TemplateStore {
     _file_path: PathBuf,
-    store: HashMap<String, Template>,
+    pub store: HashMap<String, Template>,
 }
 
 impl TemplateStore {
-    pub fn new(&self) -> TemplateStore {
-        let temp_dir = get_temp_dir();
-        setup_template_file(&mut temp_dir);
-        let content: String = self.get_store_content();
+    pub fn new() -> TemplateStore {
+        let _file_path = setup_template_file();
+        let content: String = get_store_content(&_file_path);
         let store: HashMap<String, Template> = toml::from_str(&content).unwrap();
-
-        return TemplateStore {
-            _file_path: temp_dir,
-            store,
-        };
-    }
-    fn get_store_content(&self) -> String {
-        read_to_string(self._file_path).unwrap()
-    }
-    fn write_to_store(&self) -> File {
-        OpenOptions::new()
-            .write(true)
-            .open(self._file_path)
-            .unwrap()
+        return TemplateStore { _file_path, store };
     }
     pub fn add_template(&mut self, key: String, path: PathBuf) {
         self.store.insert(key, Template { path });
@@ -57,15 +43,26 @@ impl TemplateStore {
             println!("Entry with key {} does not exist", key)
         }
     }
+    pub fn save(&self) {
+        let content: String = toml::to_string(&self.store).unwrap();
+        self.write_to_store(content);
+    }
+
+    fn write_to_store(&self, content: String) {
+        std::fs::write(&self._file_path, content).expect("Unable to write to file.");
+    }
 }
 
-fn setup_template_file(temp_dir: &mut PathBuf) -> &PathBuf {
-    temp_dir.push("templates.toml");
+fn get_store_content(file_path: &PathBuf) -> String {
+    read_to_string(&file_path).unwrap()
+}
 
+fn setup_template_file() -> PathBuf {
+    let mut temp_dir = get_temp_dir();
+    temp_dir.push("templates.toml");
     if !temp_dir.exists() {
         write(&temp_dir, "").unwrap();
     }
-
     temp_dir
 }
 
@@ -73,7 +70,6 @@ fn get_temp_dir() -> PathBuf {
     let mut home = dirs::home_dir().unwrap();
     home.push("temp/");
     println!("{:?}", home);
-
     match create_dir_all(&home) {
         Ok(_) => home,
         Err(_) => home,
