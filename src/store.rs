@@ -5,83 +5,81 @@ use std::path::{Path, PathBuf};
 use crate::Config;
 use std::env::current_exe;
 use std::error::Error;
-use std::fs::{copy, create_dir_all, remove_file, write, File, OpenOptions};
+use std::fs::{create_dir_all, write, File, OpenOptions};
 use std::io::{BufRead, BufReader, Read};
 
-struct TemplateStore {
+pub struct TemplateStore {
     file: File,
-    path: PathBuf,
     values: HashMap<String, String>,
 }
 
 impl TemplateStore {
-    fn new(filename: &str) -> TemplateStore {
-        let (file, path) = get_template_file(filename).unwrap();
+    pub fn new(filename: &str) -> TemplateStore {
+        let (file, _) = get_template_file(filename).unwrap();
 
         let reader = BufReader::new(&file);
         let mut values: HashMap<String, String> = HashMap::new();
         let valid_lines = validate_lines(reader);
         lines_to_hashmap(valid_lines, &mut values);
 
-        TemplateStore { file, path, values }
-    }
-}
-
-pub fn add_to_store(config: Config) -> Result<(), Box<dyn Error>> {
-    let mut store = TemplateStore::new("templates.txt");
-    if store.values.contains_key(&config.template_key) {
-        panic!("Template already existing.");
-    };
-    let template = get_template_to_add(&config.path)?;
-    writeln!(store.file, "{} {}", config.template_key, template)?;
-    Ok(())
-}
-
-pub fn remove_from_store(config: Config) -> Result<(), Box<dyn Error>> {
-    let mut store = TemplateStore::new("templates.txt");
-    let mut tmp_store = TemplateStore::new("tmp_templates.txt");
-
-    match store.values.remove_entry(&config.template_key) {
-        Some(entry) => println!("Removed '{}' from store.", entry.0),
-        None => println!(
-            "Template with key '{}' does not exist.",
-            &config.template_key
-        ),
-    };
-    for key in store.values.keys() {
-        writeln!(tmp_store.file, "{} {}", key, store.values.get(key).unwrap())?;
+        TemplateStore { file, values }
     }
 
-    copy(&tmp_store.path, store.path)?;
-    remove_file(tmp_store.path)?;
-
-    Ok(())
-}
-
-pub fn list_from_store() {
-    let store = TemplateStore::new("templates.txt");
-    println!("The following keys are registered: ");
-    for key in store.values.keys() {
-        println!("{}", key)
-    }
-}
-
-pub fn create_from_store(config: Config) -> Result<(), Box<dyn Error>> {
-    let store = TemplateStore::new("templates.txt");
-    let template = store
-        .values
-        .get(&config.template_key)
-        .expect("Template not found");
-    let parent = config.path.parent().unwrap_or(Path::new("/"));
-
-    if !parent.exists() {
-        create_dir_all(parent)?;
+    pub fn add_to_store(&mut self, config: Config) -> Result<(), Box<dyn Error>> {
+        if self.values.contains_key(&config.template_key) {
+            panic!("Template already existing.");
+        };
+        let template = get_template_to_add(&config.path)?;
+        writeln!(self.file, "{} {}", config.template_key, template)?;
+        Ok(())
     }
 
-    let saveable_template = template.replace("<?>", "\n");
+    fn clear_file(&self) {
+        self.file.set_len(0).unwrap();
+    }
 
-    write(config.path, saveable_template)?;
-    Ok(())
+    pub fn remove_from_store(&mut self, config: Config) -> Result<(), Box<dyn Error>> {
+        let mut store = TemplateStore::new("templates.txt");
+
+        match store.values.remove_entry(&config.template_key) {
+            Some(entry) => println!("Removed '{}' from store.", entry.0),
+            None => println!(
+                "Template with key '{}' does not exist.",
+                &config.template_key
+            ),
+        };
+
+        self.clear_file();
+        for key in store.values.keys() {
+            writeln!(self.file, "{} {}", key, self.values.get(key).unwrap())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn list_from_store(&self) {
+        println!("The following keys are registered: ");
+        for key in self.values.keys() {
+            println!("{}", key)
+        }
+    }
+
+    pub fn create_from_store(&mut self, config: Config) -> Result<(), Box<dyn Error>> {
+        let template = self
+            .values
+            .get(&config.template_key)
+            .expect("Template not found");
+        let parent = config.path.parent().unwrap_or(Path::new("/"));
+
+        if !parent.exists() {
+            create_dir_all(parent)?;
+        }
+
+        let saveable_template = template.replace("<?>", "\n");
+
+        write(config.path, saveable_template)?;
+        Ok(())
+    }
 }
 
 fn get_template_to_add(path: &PathBuf) -> Result<String, Box<dyn Error>> {
